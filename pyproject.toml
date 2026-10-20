@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ytnotes"
+version = "0.1.0"
+description = "Turn a YouTube link into a timestamped transcript and polished study notes using Claude."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Udaykishore Resu" }]
+dependencies = [
+    "anthropic>=1.15",
+    "youtube-transcript-api>=1.2",
+    "yt-dlp",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+ytnotes = "ytnotes.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ytnotes"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
