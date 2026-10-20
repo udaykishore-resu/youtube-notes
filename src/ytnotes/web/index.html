@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ytnotes</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --surface: #ffffff;
+    --surface-2: #f0efec;
+    --text: #1d1d1b;
+    --muted: #6b6a66;
+    --border: #e2e0db;
+    --accent: #c4372b;
+    --accent-text: #ffffff;
+    --accent-soft: #fbe9e7;
+    --focus: #c4372b55;
+    --error-bg: #fdecea;
+    --error-text: #8a1c12;
+    --code-bg: #f3f2ef;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413;
+      --surface: #1d1d1b;
+      --surface-2: #262624;
+      --text: #ecebe7;
+      --muted: #9d9b95;
+      --border: #34332f;
+      --accent: #e5574a;
+      --accent-text: #ffffff;
+      --accent-soft: #3a1f1c;
+      --focus: #e5574a66;
+      --error-bg: #3a1c19;
+      --error-text: #ffb4a9;
+      --code-bg: #262624;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 16px 80px; }
+
+  header.hero { text-align: center; margin-bottom: 28px; }
+  .logo { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 26px; letter-spacing: -0.02em; }
+  .logo svg { width: 34px; height: 34px; }
+  .tagline { color: var(--muted); margin: 6px 0 0; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+  form.card { padding: 18px; }
+  .url-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .url-row input {
+    flex: 1 1 320px; min-width: 0;
+    font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+  }
+  input:focus, select:focus, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+  .buttons { display: flex; gap: 10px; flex: 0 0 auto; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer;
+    border-radius: 10px; padding: 11px 18px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text);
+    display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button:disabled { opacity: .55; cursor: progress; }
+  button svg { width: 18px; height: 18px; }
+
+  details.options { margin-top: 12px; }
+  details.options summary { color: var(--muted); cursor: pointer; font-size: 14px; user-select: none; }
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
+  .opts label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .opts input, .opts select {
+    font: inherit; font-size: 15px; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  }
+
+  .status { margin: 18px 2px 0; color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 10px; min-height: 22px; }
+  .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error { margin-top: 18px; background: var(--error-bg); color: var(--error-text); border-radius: 10px; padding: 12px 14px; }
+
+  #result { margin-top: 18px; overflow: hidden; }
+  .video { display: flex; gap: 14px; padding: 14px; border-bottom: 1px solid var(--border); align-items: center; }
+  .video img { width: 128px; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; flex: 0 0 auto; background: var(--surface-2); }
+  .video h2 { font-size: 17px; margin: 0 0 4px; line-height: 1.3; }
+  .video h2 a { color: inherit; text-decoration: none; }
+  .video .meta { color: var(--muted); font-size: 13px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .toolbar .label { font-weight: 600; margin-right: auto; }
+  .toolbar button { padding: 7px 12px; font-size: 14px; }
+  .toolbar input[type=search] {
+    font: inherit; font-size: 14px; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; width: 180px; max-width: 100%;
+  }
+
+  .content { padding: 8px 22px 26px; overflow-wrap: anywhere; }
+  .transcript p { display: flex; gap: 12px; margin: 12px 0; }
+  .transcript a.ts {
+    flex: 0 0 auto; font: 600 13px/1.9 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 0 7px; height: fit-content; text-decoration: none;
+  }
+  .transcript p.hidden { display: none; }
+  mark { background: #f6d860; color: #1d1d1b; border-radius: 3px; }
+
+  .notes h1 { font-size: 26px; letter-spacing: -0.01em; margin: 18px 0 6px; }
+  .notes h2 { font-size: 20px; margin: 30px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .notes h3 { font-size: 17px; margin: 22px 0 6px; }
+  .notes a { color: var(--accent); }
+  .notes li { margin: 4px 0; }
+  .notes code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: .92em; }
+  .notes pre { background: var(--code-bg); padding: 12px; border-radius: 8px; overflow-x: auto; }
+  .notes pre code { padding: 0; background: none; }
+  .notes table { border-collapse: collapse; width: 100%; display: block; overflow-x: auto; font-size: 15px; }
+  .notes th, .notes td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; vertical-align: top; }
+  .notes th { background: var(--surface-2); }
+  .notes blockquote { margin: 12px 0; padding: 4px 14px; border-left: 3px solid var(--accent); color: var(--muted); }
+  .notes details { background: var(--surface-2); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .notes summary { cursor: pointer; font-weight: 600; }
+  .caret::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  [hidden] { display: none !important; }
+  @media (max-width: 560px) {
+    main { padding-top: 28px; }
+    .buttons { width: 100%; }
+    .buttons button { flex: 1; justify-content: center; }
+    .video img { width: 96px; }
+    .content { padding: 4px 14px 20px; }
+    .transcript p { flex-direction: column; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="logo">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="6" width="28" height="20" rx="6" fill="var(--accent)"/><path d="M13 11.5v9l8-4.5z" fill="#fff"/></svg>
+      ytnotes
+    </div>
+    <p class="tagline">Paste a YouTube link. Get the transcript, or study notes you'd actually want to read.</p>
+  </header>
+
+  <form class="card" id="form" autocomplete="off">
+    <div class="url-row">
+      <input id="url" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=…" aria-label="YouTube link" required>
+      <div class="buttons">
+        <button type="submit" id="btn-transcript" data-mode="transcript">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          Transcript
+        </button>
+        <button type="submit" id="btn-notes" class="primary" data-mode="notes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/></svg>
+          Summarize
+        </button>
+      </div>
+    </div>
+    <details class="options">
+      <summary>Options</summary>
+      <div class="opts">
+        <label>Caption languages (in order)
+          <input id="lang" value="en" placeholder="en hi">
+        </label>
+        <label>Write notes in
+          <input id="notes-language" value="English">
+        </label>
+        <label>Thinking effort
+          <select id="effort">
+            <option value="low">Low (fastest)</option>
+            <option value="medium">Medium</option>
+            <option value="high" selected>High (recommended)</option>
+            <option value="xhigh">Extra high</option>
+            <option value="max">Max (slowest)</option>
+          </select>
+        </label>
+      </div>
+    </details>
+  </form>
+
+  <div class="status" id="status" aria-live="polite"></div>
+  <div class="error" id="error" role="alert" hidden></div>
+
+  <section class="card" id="result" hidden>
+    <div class="video" id="video"></div>
+    <div class="toolbar">
+      <span class="label" id="result-label"></span>
+      <input type="search" id="filter" placeholder="Search transcript" hidden>
+      <button type="button" id="btn-copy">Copy</button>
+      <button type="button" id="btn-download">Download .md</button>
+    </div>
+    <div class="content" id="content"></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const form = $("form"), urlInput = $("url"), statusEl = $("status"), errorEl = $("error");
+  const result = $("result"), content = $("content"), filter = $("filter");
+  const buttons = [$("btn-transcript"), $("btn-notes")];
+  let current = { markdown: "", filename: "notes.md" };
+  let controller = null;
+
+  // Remember options per browser (best effort).
+  const optionIds = ["lang", "notes-language", "effort"];
+  try {
+    const saved = JSON.parse(localStorage.getItem("ytnotes-options") || "{}");
+    optionIds.forEach((id) => { if (saved[id]) $(id).value = saved[id]; });
+  } catch {}
+  const saveOptions = () => {
+    try { localStorage.setItem("ytnotes-options", JSON.stringify(Object.fromEntries(optionIds.map((id) => [id, $(id).value])))); } catch {}
+  };
+
+  marked.setOptions({ gfm: true, breaks: false });
+  DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+    if (node.tagName === "A") { node.setAttribute("target", "_blank"); node.setAttribute("rel", "noopener noreferrer"); }
+  });
+  const renderMd = (md) => DOMPurify.sanitize(marked.parse(md));
+
+  const fmt = (s) => {
+    s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return (h ? h + ":" + String(m).padStart(2, "0") : String(m).padStart(2, "0")) + ":" + String(sec).padStart(2, "0");
+  };
+  const esc = (t) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const slug = (t) => (t.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/[\s_-]+/g, "-").slice(0, 60) || "video");
+
+  function setBusy(busy, message) {
+    buttons.forEach((b) => (b.disabled = busy));
+    statusEl.innerHTML = busy ? `<span class="spinner"></span><span>${esc(message)}</span>` : (message ? esc(message) : "");
+  }
+  function showError(msg) { errorEl.textContent = msg; errorEl.hidden = !msg; }
+
+  function showVideo(v) {
+    $("video").innerHTML = `
+      <img src="${esc(v.thumbnail)}" alt="">
+      <div>
+        <h2><a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title)}</a></h2>
+        <div class="meta">${[v.channel, v.duration ? fmt(v.duration) : "", v.captions].filter(Boolean).map(esc).join(" · ")}</div>
+      </div>`;
+    result.hidden = false;
+  }
+
+  async function getTranscript(payload) {
+    setBusy(true, "Fetching transcript…");
+    const res = await fetch("/api/transcript", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: controller.signal });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Could not fetch the transcript.");
+    const v = data.video;
+    showVideo(v);
+    $("result-label").textContent = `Transcript · ${data.paragraphs.length} sections`;
+    filter.hidden = false; filter.value = "";
+    content.className = "content transcript";
+    content.innerHTML = data.paragraphs.map((p) =>
+      `<p><a class="ts" href="${esc(v.url)}&t=${Math.floor(p.start)}s" target="_blank" rel="noopener">${fmt(p.start)}</a><span data-text="${esc(p.text)}">${esc(p.text)}</span></p>`
+    ).join("");
+    current = { markdown: data.markdown, filename: `${slug(v.title)}-transcript.md` };
+    setBusy(false, "");
+  }
+
+  async function getNotes(payload) {
+    setBusy(true, "Fetching transcript…");
+    const res = await fetch("/api/notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: controller.signal });
+    if (!res.ok || !res.body) throw new Error("The server could not start writing notes.");
+    filter.hidden = true;
+    content.className = "content notes";
+    let md = "", buffer = "", video = null, started = false, frame = 0;
+    const paint = (done) => {
+      content.innerHTML = renderMd(md) + (done ? "" : '<span class="caret"></span>');
+    };
+    const reader = res.body.getReader(), decoder = new TextDecoder();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nl;
+      while ((nl = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, nl).trim(); buffer = buffer.slice(nl + 1);
+        if (!line) continue;
+        const ev = JSON.parse(line);
+        if (ev.type === "video") {
+          video = ev.video; showVideo(video);
+          $("result-label").textContent = "Notes";
+          content.innerHTML = "";
+          setBusy(true, "Claude is reading the video and thinking… this can take a minute for long videos.");
+        } else if (ev.type === "delta") {
+          if (!started) { started = true; setBusy(true, "Writing notes…"); }
+          md += ev.text;
+          if (!frame) frame = requestAnimationFrame(() => { frame = 0; paint(false); });
+        } else if (ev.type === "error") {
+          throw new Error(ev.error);
+        } else if (ev.type === "done") {
+          cancelAnimationFrame(frame); frame = 0; paint(true);
+        }
+      }
+    }
+    current = { markdown: md.trim() + "\n", filename: `${slug(video ? video.title : "video")}-notes.md` };
+    setBusy(false, "Done.");
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const mode = (e.submitter && e.submitter.dataset.mode) || "notes";
+    const url = urlInput.value.trim();
+    if (!url) return urlInput.focus();
+    saveOptions();
+    showError("");
+    if (controller) controller.abort();
+    controller = new AbortController();
+    const payload = { url, lang: $("lang").value, notes_language: $("notes-language").value, effort: $("effort").value };
+    try {
+      await (mode === "transcript" ? getTranscript(payload) : getNotes(payload));
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      setBusy(false, "");
+      showError(err.message || String(err));
+      content.querySelector(".caret")?.remove();
+      if (!content.textContent.trim()) result.hidden = true;
+    }
+  });
+
+  // Paste a link and press Enter → Summarize (the primary button).
+  urlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); form.requestSubmit($("btn-notes")); }
+  });
+
+  filter.addEventListener("input", () => {
+    const q = filter.value.trim().toLowerCase();
+    content.querySelectorAll("p").forEach((p) => {
+      const span = p.querySelector("span"), text = span.dataset.text;
+      const hit = !q || text.toLowerCase().includes(q);
+      p.classList.toggle("hidden", !hit);
+      span.innerHTML = q && hit ? esc(text).replace(new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), (m) => `<mark>${m}</mark>`) : esc(text);
+    });
+  });
+
+  $("btn-copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(current.markdown); $("btn-copy").textContent = "Copied"; }
+    catch { $("btn-copy").textContent = "Copy failed"; }
+    setTimeout(() => ($("btn-copy").textContent = "Copy"), 1500);
+  });
+  $("btn-download").addEventListener("click", () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([current.markdown], { type: "text/markdown" }));
+    a.download = current.filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  urlInput.focus();
+})();
+</script>
+</body>
+</html>

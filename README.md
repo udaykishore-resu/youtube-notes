@@ -15,7 +15,20 @@ pip install -e ".[dev]"
 export ANTHROPIC_API_KEY=sk-ant-...   # get one at https://console.anthropic.com
 ```
 
-## Usage
+## Web UI
+
+```bash
+ytnotes-web
+```
+
+This opens http://127.0.0.1:8765 in your browser. Paste a YouTube link, then click:
+
+- **Transcript**: shows the full transcript with clickable timestamps and a search box.
+- **Summarize** (or press Enter): Claude writes the notes, and they appear on the page as they're generated.
+
+Both views have **Copy** and **Download .md** buttons. Caption language, notes language and thinking effort are under **Options**. Use `ytnotes-web --port 9000` to change the port, or `--no-browser` to skip opening a tab.
+
+## Command line
 
 ```bash
 ytnotes "https://www.youtube.com/watch?v=zjkBMFhNj_g"
@@ -46,6 +59,8 @@ src/ytnotes/
   youtube.py   # URL parsing, metadata (yt-dlp), transcript fetching and formatting
   notes.py     # the Claude prompt and API call that write the notes
   cli.py       # command-line interface (also runnable as `python -m ytnotes`)
+  server.py    # local web server behind the UI (`ytnotes-web`)
+  web/         # the single-page UI
 tests/         # pytest unit tests (no network needed)
 ```
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterator
 
 from .youtube import Segment, VideoInfo, fmt_ts
 
@@ -36,12 +37,10 @@ are fine when wording matters.
 - Output only the Markdown notes, with no preamble."""
 
 
-def generate_notes(info: VideoInfo, paragraphs: list[Segment], notes_language: str, effort: str) -> str:
-    import anthropic
-
+def build_user_message(info: VideoInfo, paragraphs: list[Segment], notes_language: str) -> str:
     timed = "\n".join(f"[{fmt_ts(p.start)} | {int(p.start)}s] {p.text}" for p in paragraphs)
     chapters = "\n".join(f"- {fmt_ts(c['start_time'])} {c.get('title', '')}" for c in info.chapters) or "(none)"
-    user_msg = (
+    return (
         f"Video title: {info.title}\n"
         f"Channel: {info.channel or 'unknown'}\n"
         f"Duration: {fmt_ts(info.duration) if info.duration else 'unknown'}\n"
@@ -52,8 +51,14 @@ def generate_notes(info: VideoInfo, paragraphs: list[Segment], notes_language: s
         f"Write the notes in {notes_language}."
     )
 
+
+def stream_notes(
+    info: VideoInfo, paragraphs: list[Segment], notes_language: str = "English", effort: str = "high"
+) -> Iterator[str]:
+    """Yield the notes' Markdown text as Claude writes it."""
+    import anthropic
+
     client = anthropic.Anthropic()
-    print(f"Generating notes with {MODEL} (effort={effort})...", file=sys.stderr)
     with client.beta.messages.stream(
         model=MODEL,
         max_tokens=64000,
@@ -62,13 +67,17 @@ def generate_notes(info: VideoInfo, paragraphs: list[Segment], notes_language: s
         output_config={"effort": effort},
         betas=["server-side-fallback-2026-07-01"],
         fallbacks="default",
-        messages=[{"role": "user", "content": user_msg}],
+        messages=[{"role": "user", "content": build_user_message(info, paragraphs, notes_language)}],
     ) as stream:
+        yield from stream.text_stream
         message = stream.get_final_message()
 
     if message.stop_reason == "refusal":
         raise RuntimeError("The model declined to summarize this video.")
-    notes = "".join(b.text for b in message.content if b.type == "text").strip()
     if message.stop_reason == "max_tokens":
-        notes += "\n\n> ⚠️ Notes were cut off because they hit the output length limit."
-    return notes
+        yield "\n\n> ⚠️ Notes were cut off because they hit the output length limit."
+
+
+def generate_notes(info: VideoInfo, paragraphs: list[Segment], notes_language: str, effort: str) -> str:
+    print(f"Generating notes with {MODEL} (effort={effort})...", file=sys.stderr)
+    return "".join(stream_notes(info, paragraphs, notes_language, effort)).strip()
