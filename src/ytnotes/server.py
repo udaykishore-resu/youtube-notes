@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import threading
 import webbrowser
@@ -14,6 +15,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 
+from .env import load_env
 from .notes import MODEL, stream_notes
 from .youtube import (
     Segment,
@@ -126,6 +128,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write((json.dumps(event) + "\n").encode())
             self.wfile.flush()
 
+        load_env()  # pick up a key added to .env while the server is running
         try:
             info, paragraphs, lang_label, _ = load_video(payload.get("url", ""), parse_languages(payload.get("lang")))
             emit({"type": "video", "video": video_json(info, lang_label), "model": MODEL})
@@ -154,7 +157,7 @@ def friendly_error(exc: Exception) -> str:
         import anthropic
 
         if isinstance(exc, anthropic.AuthenticationError):
-            return "Anthropic API key is missing or invalid. Set ANTHROPIC_API_KEY and restart ytnotes-web."
+            return "Anthropic API key is missing or invalid. Put it in the .env file (see .env.example) then click Summarize again."
         if isinstance(exc, anthropic.RateLimitError):
             return "Rate limited by the Anthropic API. Wait a moment and try again."
         if isinstance(exc, anthropic.APIConnectionError):
@@ -162,11 +165,12 @@ def friendly_error(exc: Exception) -> str:
     except ImportError:
         pass
     if "api_key" in str(exc).lower() or "authentication" in str(exc).lower():
-        return "Anthropic API key is missing. Set ANTHROPIC_API_KEY and restart ytnotes-web."
+        return "Anthropic API key is missing. Put it in the .env file (see .env.example) then click Summarize again."
     return str(exc)
 
 
 def main() -> int:
+    load_env()
     parser = argparse.ArgumentParser(prog="ytnotes-web", description="Local web UI for ytnotes")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--host", default="127.0.0.1")
@@ -176,6 +180,9 @@ def main() -> int:
     httpd = ThreadingHTTPServer((args.host, args.port), Handler)
     url = f"http://{args.host}:{args.port}"
     print(f"ytnotes UI running at {url}  (Ctrl+C to stop)", file=sys.stderr)
+    if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
+        print("note: no ANTHROPIC_API_KEY found; Transcript works, Summarize needs a key (see .env.example)",
+              file=sys.stderr)
     if not args.no_browser:
         threading.Timer(0.5, webbrowser.open, [url]).start()
     try:

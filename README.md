@@ -12,8 +12,10 @@ Paste a YouTube link and get back:
 cd youtube-notes
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-export ANTHROPIC_API_KEY=sk-ant-...   # get one at https://console.anthropic.com
+cp .env.example .env    # then open .env and paste your key after ANTHROPIC_API_KEY=
 ```
+
+Get a key at https://console.anthropic.com/settings/keys. The `.env` file is gitignored, so the key never gets committed. An exported `ANTHROPIC_API_KEY` also works and takes priority.
 
 ## Web UI
 

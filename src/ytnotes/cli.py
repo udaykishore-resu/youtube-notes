@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .env import load_env
 from .notes import generate_notes
 from .youtube import extract_video_id, fetch_metadata, fetch_transcript, group_segments, render_transcript
 
@@ -18,6 +19,7 @@ def slugify(text: str) -> str:
 
 
 def main() -> int:
+    load_env()
     parser = argparse.ArgumentParser(prog="ytnotes", description="YouTube link -> transcript + perfect notes")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("url", help="YouTube URL or video id")
